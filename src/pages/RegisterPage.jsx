@@ -1,44 +1,46 @@
 import { useState } from "react";
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendEmailVerification,
+} from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig.js";
 import { useNavigate, Link } from "react-router-dom";
 
 function RegisterPage() {
-  const [displayName, setDisplayName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [info, setInfo] = useState("");
   const [error, setError] = useState("");
+
   const navigate = useNavigate();
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleRegister = async () => {
     setError("");
-    setInfo("");
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(cred.user, { displayName });
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
 
-      await sendEmailVerification(cred.user);
-      setInfo("Verification email sent. Please check your inbox.");
+      await updateProfile(userCred.user, { displayName: name });
+      await sendEmailVerification(userCred.user);
 
-      // ممكن بعدين تجبرينهم يرجعون للـ Login
-      // navigate("/login");
+      navigate("/login");
     } catch (err) {
-      setError("Registration failed.");
+      console.log(err);
+      setError(err.message);
     }
   };
 
   return (
-    <div className="auth-page">
+    <div>
       <h1>Register</h1>
-      <form onSubmit={handleRegister}>
+
+      <div>
         <input
-          placeholder="Display name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          required
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
 
         <input
@@ -46,26 +48,23 @@ function RegisterPage() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          required
         />
 
         <input
           type="password"
-          placeholder="Password (min 6 chars)"
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
         />
 
-        {error && <p className="error">{error}</p>}
-        {info && <p className="info">{info}</p>}
+        <button onClick={handleRegister}>Create account</button>
 
-        <button type="submit">Create account</button>
-      </form>
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <p>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+        <p>
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
     </div>
   );
 }
