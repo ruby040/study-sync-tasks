@@ -1,61 +1,151 @@
-// src/pages/CoursePage.jsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-    addTask,
-    deleteTask,
-    listenToTasks,
-    updateTask,
+  subscribeToCourseTasks,
+  addTask,
+  updateTask,
+  toggleTaskStatus,
+  deleteTask,
 } from "../firebase/taskService";
 
 function CoursePage() {
-  const { courseId } = useParams();
-  const currentCourseId = courseId || "cs335"; // احتياط لو ما فيه بارام
+  const { courseId } = useParams(); // المفروض يعطيك "cs335" مثلًا
 
   const [tasks, setTasks] = useState([]);
+
+  // form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("medium");
+  const [priority, setPriority] = useState("Medium");
+  const [dueDate, setDueDate] = useState(""); // yyyy-mm-dd
+  const [assignedTo, setAssignedTo] = useState("");
 
-  // 🔄 real-time listener
+  // filters
+  const [filterStatus, setFilterStatus] = useState("all");    // all | pending | done
+  const [filterPriority, setFilterPriority] = useState("all"); // all | Low | Medium | High
+  const [filterAssignee, setFilterAssignee] = useState("all"); // all or name/email
+  const [sortBy, setSortBy] = useState("dueDate");            // dueDate | createdAt
+
+  // edit mode
+  const [editingTaskId, setEditingTaskId] = useState(null);
+
   useEffect(() => {
-    const unsubscribe = listenToTasks(currentCourseId, setTasks);
-    return () => unsubscribe();
-  }, [currentCourseId]);
+    if (!courseId) return;
 
-  const handleAddTask = async () => {
-    if (!title.trim()) return;
-    await addTask(currentCourseId, {
-      title,
-      description,
-      priority,
+    const unsubscribe = subscribeToCourseTasks(courseId, (data) => {
+      setTasks(data);
     });
+
+    return () => unsubscribe();
+  }, [courseId]);
+
+  async function handleAddTask(e) {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    await addTask(courseId, {
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      dueDate: dueDate || null,
+      assignedTo: assignedTo.trim(),
+    });
+
+    // reset form
     setTitle("");
     setDescription("");
-    setPriority("medium");
-  };
+    setPriority("Medium");
+    setDueDate("");
+    setAssignedTo("");
+  }
 
-  const toggleStatus = async (task) => {
-    const newStatus = task.status === "done" ? "pending" : "done";
-    await updateTask(currentCourseId, task.id, { status: newStatus });
-  };
+  function handleStartEdit(task) {
+    setEditingTaskId(task.id);
+    setTitle(task.title || "");
+    setDescription(task.description || "");
+    setPriority(task.priority || "Medium");
+    setAssignedTo(task.assignedTo || "");
+    setDueDate(
+      task.dueDate && task.dueDate.toDate
+        ? task.dueDate.toDate().toISOString().slice(0, 10)
+        : ""
+    );
+  }
 
-  const handleDelete = async (taskId) => {
-    await deleteTask(currentCourseId, taskId);
-  };
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editingTaskId) return;
+
+    const updates = {
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      assignedTo: assignedTo.trim(),
+      dueDate: dueDate ? new Date(dueDate) : null,
+    };
+
+    await updateTask(courseId, editingTaskId, updates);
+
+    setEditingTaskId(null);
+    setTitle("");
+    setDescription("");
+    setPriority("Medium");
+    setDueDate("");
+    setAssignedTo("");
+  }
+
+  function filteredAndSortedTasks() {
+    let result = [...tasks];
+
+    // filter by status
+    if (filterStatus !== "all") {
+      result = result.filter((t) => t.status === filterStatus);
+    }
+
+    // filter by priority
+    if (filterPriority !== "all") {
+      result = result.filter((t) => t.priority === filterPriority);
+    }
+
+    // filter by assignee
+    if (filterAssignee !== "all") {
+      result = result.filter(
+        (t) =>
+          (t.assignedTo || "").toLowerCase() === filterAssignee.toLowerCase()
+      );
+    }
+
+    // sorting
+    result.sort((a, b) => {
+      if (sortBy === "dueDate") {
+        const ad = a.dueDate?.toDate ? a.dueDate.toDate().getTime() : 0;
+        const bd = b.dueDate?.toDate ? b.dueDate.toDate().getTime() : 0;
+        return ad - bd;
+      } else {
+        // createdAt
+        const ac = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const bc = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return ac - bc;
+      }
+    });
+
+    return result;
+  }
 
   return (
     <div style={{ padding: "1.5rem" }}>
-      <h1>Course Tasks – {currentCourseId}</h1>
+      <h2>Course Tasks – {courseId}</h2>
 
-      {/* form إضافة تاسك */}
-      <div style={{ margin: "1rem 0" }}>
+      {/* Form create / edit */}
+      <form
+        onSubmit={editingTaskId ? handleSaveEdit : handleAddTask}
+        style={{ margin: "1rem 0" }}
+      >
         <input
           type="text"
-          placeholder="Task title"
+          placeholder="Task title *"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          style={{ marginRight: "0.5rem" }}
         />
 
         <input
@@ -63,41 +153,102 @@ function CoursePage() {
           placeholder="Description (optional)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          style={{ marginRight: "0.5rem" }}
         />
 
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          style={{ marginRight: "0.5rem" }}
         >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
         </select>
 
-        <button onClick={handleAddTask}>Add Task</button>
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Assigned to (name/email)"
+          value={assignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+        />
+
+        <button type="submit">
+          {editingTaskId ? "Save changes" : "Add Task"}
+        </button>
+
+        {editingTaskId && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingTaskId(null);
+              setTitle("");
+              setDescription("");
+              setPriority("Medium");
+              setDueDate("");
+              setAssignedTo("");
+            }}
+          >
+            Cancel
+          </button>
+        )}
+      </form>
+
+      {/* Filters */}
+      <div style={{ marginBottom: "1rem" }}>
+        <span>Filter status: </span>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="done">Done</option>
+        </select>
+
+        <span> Priority: </span>
+        <select
+          value={filterPriority}
+          onChange={(e) => setFilterPriority(e.target.value)}
+        >
+          <option value="all">All</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
+
+        <span> Sort by: </span>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="dueDate">Due date</option>
+          <option value="createdAt">Created time</option>
+        </select>
       </div>
 
-      {/* عرض الـ tasks */}
+      {/* Tasks list */}
       <ul>
-        {tasks.map((task) => (
-          <li key={task.id} style={{ marginBottom: "0.5rem" }}>
-            <span
-              style={{
-                textDecoration: task.status === "done" ? "line-through" : "none",
-                marginRight: "0.5rem",
-              }}
+        {filteredAndSortedTasks().map((task) => (
+          <li key={task.id}>
+            <strong>[{task.priority?.toLowerCase()}]</strong>{" "}
+            {task.title}{" "}
+            {task.description && <>- {task.description}</>}
+            {task.dueDate?.toDate && (
+              <> — due: {task.dueDate.toDate().toLocaleDateString()}</>
+            )}
+            {task.assignedTo && <> — assigned to: {task.assignedTo}</>}
+            {"  "}
+            <button
+              onClick={() =>
+                toggleTaskStatus(courseId, task.id, task.status || "pending")
+              }
             >
-              [{task.priority}] {task.title}{" "}
-              {task.description ? `- ${task.description}` : ""}
-            </span>
-
-            <button onClick={() => toggleStatus(task)} style={{ marginRight: "0.3rem" }}>
               {task.status === "done" ? "Mark Pending" : "Mark Done"}
             </button>
-
-            <button onClick={() => handleDelete(task.id)}>Delete</button>
+            <button onClick={() => handleStartEdit(task)}>Edit</button>
+            <button onClick={() => deleteTask(courseId, task.id)}>Delete</button>
           </li>
         ))}
       </ul>

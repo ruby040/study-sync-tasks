@@ -1,56 +1,71 @@
-// src/firebase/taskService.js
-import { db } from "./firebaseConfig";
 import {
   collection,
+  doc,
   addDoc,
   onSnapshot,
   updateDoc,
   deleteDoc,
-  doc,
+  serverTimestamp,
+  query,
+  orderBy,
 } from "firebase/firestore";
+import { db } from "./firebaseConfig";
 
-// 🔄 real-time listener
-export function listenToTasks(courseId, callback) {
+/**
+ * Subscribe to tasks of a specific course.
+ * Real-time listener.
+ */
+export function subscribeToCourseTasks(courseId, callback) {
   const tasksRef = collection(db, "courses", courseId, "tasks");
+  const q = query(tasksRef, orderBy("dueDate", "asc"), orderBy("createdAt", "asc"));
 
-  const unsub = onSnapshot(
-    tasksRef,
-    (snapshot) => {
-      const tasks = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-      console.log("TASKS SNAPSHOT >>>", tasks);
-      callback(tasks);
-    },
-    (error) => {
-      console.error("Firestore listen error:", error);
-    }
-  );
-
-  return unsub;
-}
-
-// ➕ إضافة تاسك
-export async function addTask(courseId, taskData) {
-  const tasksRef = collection(db, "courses", courseId, "tasks");
-  console.log("ADDING TASK >>>", courseId, taskData);
-
-  await addDoc(tasksRef, {
-    title: taskData.title,
-    description: taskData.description || "",
-    priority: taskData.priority || "low",
-    status: "pending",
+  return onSnapshot(q, (snapshot) => {
+    const tasks = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+    callback(tasks);
   });
 }
 
-// 🔁 تحديث تاسك
-export async function updateTask(courseId, taskId, updates) {
-  const taskRef = doc(db, "courses", courseId, "tasks", taskId);
-  await updateDoc(taskRef, updates);
+/**
+ * Create new task
+ */
+export async function addTask(courseId, { title, description, priority, dueDate, assignedTo }) {
+  const tasksRef = collection(db, "courses", courseId, "tasks");
+
+  const dueDateValue = dueDate ? new Date(dueDate) : null;
+
+  await addDoc(tasksRef, {
+    title,
+    description: description || "",
+    priority: priority || "Medium",
+    status: "pending",
+    assignedTo: assignedTo || "",   
+    dueDate: dueDateValue,
+    createdAt: serverTimestamp(),
+  });
 }
 
-// ❌ حذف تاسك
+/**
+ * Update any fields in a task
+ */
+export async function updateTask(courseId, taskId, data) {
+  const taskRef = doc(db, "courses", courseId, "tasks", taskId);
+  await updateDoc(taskRef, data);
+}
+
+/**
+ * Toggle status pending/done
+ */
+export async function toggleTaskStatus(courseId, taskId, currentStatus) {
+  const newStatus = currentStatus === "done" ? "pending" : "done";
+  await updateTask(courseId, taskId, { status: newStatus });
+}
+
+/**
+ * Delete task
+ */
 export async function deleteTask(courseId, taskId) {
   const taskRef = doc(db, "courses", courseId, "tasks", taskId);
   await deleteDoc(taskRef);
