@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase/firebaseConfig.js";
-import { useNavigate, Link } from "react-router-dom";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,34 +14,47 @@ function LoginPage() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      if (!user.emailVerified) {
+        setError("Please verify your email before logging in.");
+        return;
+      }
+
       navigate("/dashboard");
     } catch (err) {
-      setError("Login failed. Please check your credentials.");
+      console.error(err);
+      setError("Login failed. Check your email or password.");
     }
   };
 
   return (
-    <div className="auth-page">
+    <div>
       <h1>Login</h1>
+
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
       <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <div>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        {error && <p className="error">{error}</p>}
+        <div>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
 
         <button type="submit">Login</button>
       </form>

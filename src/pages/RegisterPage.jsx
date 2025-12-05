@@ -1,33 +1,41 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { auth } from "../firebase/firebaseConfig.js";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
   sendEmailVerification,
 } from "firebase/auth";
-import { auth } from "../firebase/firebaseConfig.js";
-import { useNavigate, Link } from "react-router-dom";
 
 function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
   const navigate = useNavigate();
 
-  const handleRegister = async () => {
+  const handleRegister = async (e) => {
+    e.preventDefault();
     setError("");
 
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
 
-      await updateProfile(userCred.user, { displayName: name });
-      await sendEmailVerification(userCred.user);
+      await updateProfile(user, { displayName: name });
+
+      await sendEmailVerification(user);
+
+      alert("Verification email sent. Please check your inbox.");
 
       navigate("/login");
     } catch (err) {
-      console.log(err);
-      setError(err.message);
+      console.error(err);
+      setError("Registration failed. Please try again.");
     }
   };
 
@@ -35,36 +43,45 @@ function RegisterPage() {
     <div>
       <h1>Register</h1>
 
-      <div>
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+      <form onSubmit={handleRegister}>
+        <div>
+          <input
+            type="text"
+            placeholder="Display name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
 
-        <button onClick={handleRegister}>Create account</button>
+        <div>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
+        <button type="submit">Create account</button>
+      </form>
 
-        <p>
-          Already have an account? <Link to="/login">Login</Link>
-        </p>
-      </div>
+      <p>
+        Already have an account? <Link to="/login">Login</Link>
+      </p>
     </div>
   );
 }
