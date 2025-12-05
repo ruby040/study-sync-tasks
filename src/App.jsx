@@ -6,6 +6,8 @@ import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import CoursePage from "./pages/CoursePage.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot" element={<ForgotPassword />} />
+
 
         {/* Protected routes */}
         <Route

@@ -62,6 +62,11 @@ function LoginPage() {
       <p>
         No account? <Link to="/register">Register</Link>
       </p>
+
+      <p>
+  <Link to="/forgot">Forgot Password?</Link>
+</p>
+    
     </div>
   );
 }
