@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig.js";
+import "../styles/navbar.css";
 
 function Navbar() {
   const { user } = useAuth();
