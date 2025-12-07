@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import "../styles/course.css";
 import {
   subscribeToCourseTasks,
   addTask,
@@ -9,22 +10,23 @@ import {
 } from "../firebase/taskService";
 
 function CoursePage() {
-  const { courseId } = useParams(); // المفروض يعطيك "cs335" مثلًا
+  const { courseId } = useParams();
 
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
-  const [dueDate, setDueDate] = useState(""); // yyyy-mm-dd
+  const [dueDate, setDueDate] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
 
   // filters
-  const [filterStatus, setFilterStatus] = useState("all");    // all | pending | done
-  const [filterPriority, setFilterPriority] = useState("all"); // all | Low | Medium | High
-  const [filterAssignee, setFilterAssignee] = useState("all"); // all or name/email
-  const [sortBy, setSortBy] = useState("dueDate");            // dueDate | createdAt
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterAssignee, setFilterAssignee] = useState("all");
+  const [sortBy, setSortBy] = useState("dueDate");
 
   // edit mode
   const [editingTaskId, setEditingTaskId] = useState(null);
@@ -34,6 +36,7 @@ function CoursePage() {
 
     const unsubscribe = subscribeToCourseTasks(courseId, (data) => {
       setTasks(data);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -94,6 +97,9 @@ function CoursePage() {
     setAssignedTo("");
   }
 
+  // Get unique assignees for filter
+  const uniqueAssignees = [...new Set(tasks.map(task => task.assignedTo).filter(Boolean))];
+
   function filteredAndSortedTasks() {
     let result = [...tasks];
 
@@ -118,8 +124,8 @@ function CoursePage() {
     // sorting
     result.sort((a, b) => {
       if (sortBy === "dueDate") {
-        const ad = a.dueDate?.toDate ? a.dueDate.toDate().getTime() : 0;
-        const bd = b.dueDate?.toDate ? b.dueDate.toDate().getTime() : 0;
+        const ad = a.dueDate?.toDate ? a.dueDate.toDate().getTime() : Infinity;
+        const bd = b.dueDate?.toDate ? b.dueDate.toDate().getTime() : Infinity;
         return ad - bd;
       } else {
         // createdAt
@@ -132,126 +138,264 @@ function CoursePage() {
     return result;
   }
 
+  const filteredTasks = filteredAndSortedTasks();
+
   return (
-    <div style={{ padding: "1.5rem" }}>
-      <h2>Course Tasks – {courseId}</h2>
-
-      {/* Form create / edit */}
-      <form
-        onSubmit={editingTaskId ? handleSaveEdit : handleAddTask}
-        style={{ margin: "1rem 0" }}
-      >
-        <input
-          type="text"
-          placeholder="Task title *"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-
-        <input
-          type="text"
-          placeholder="Description (optional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-
-        <select
-          value={priority}
-          onChange={(e) => setPriority(e.target.value)}
-        >
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
-
-        <input
-          type="text"
-          placeholder="Assigned to (name/email)"
-          value={assignedTo}
-          onChange={(e) => setAssignedTo(e.target.value)}
-        />
-
-        <button type="submit">
-          {editingTaskId ? "Save changes" : "Add Task"}
-        </button>
-
-        {editingTaskId && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingTaskId(null);
-              setTitle("");
-              setDescription("");
-              setPriority("Medium");
-              setDueDate("");
-              setAssignedTo("");
-            }}
-          >
-            Cancel
-          </button>
-        )}
-      </form>
-
-      {/* Filters */}
-      <div style={{ marginBottom: "1rem" }}>
-        <span>Filter status: </span>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="pending">Pending</option>
-          <option value="done">Done</option>
-        </select>
-
-        <span> Priority: </span>
-        <select
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-
-        <span> Sort by: </span>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="dueDate">Due date</option>
-          <option value="createdAt">Created time</option>
-        </select>
+    <div className="course-page">
+      <div className="course-header">
+        <h2>
+          Course Tasks
+          <span className="course-id">{courseId}</span>
+        </h2>
+        
+        <div className="course-stats">
+          <div className="stat-badge">
+            <span>Total:</span>
+            <strong>{tasks.length}</strong>
+          </div>
+          <div className="stat-badge">
+            <span>Pending:</span>
+            <strong>{tasks.filter(t => t.status !== 'done').length}</strong>
+          </div>
+          <div className="stat-badge">
+            <span>Done:</span>
+            <strong>{tasks.filter(t => t.status === 'done').length}</strong>
+          </div>
+        </div>
       </div>
 
-      {/* Tasks list */}
-      <ul>
-        {filteredAndSortedTasks().map((task) => (
-          <li key={task.id}>
-            <strong>[{task.priority?.toLowerCase()}]</strong>{" "}
-            {task.title}{" "}
-            {task.description && <>- {task.description}</>}
-            {task.dueDate?.toDate && (
-              <> — due: {task.dueDate.toDate().toLocaleDateString()}</>
-            )}
-            {task.assignedTo && <> — assigned to: {task.assignedTo}</>}
-            {"  "}
-            <button
-              onClick={() =>
-                toggleTaskStatus(courseId, task.id, task.status || "pending")
-              }
-            >
-              {task.status === "done" ? "Mark Pending" : "Mark Done"}
+      {/* Add/Edit Task Form */}
+      <div className="task-form-container">
+        <h3>{editingTaskId ? "Edit Task" : "Add New Task"}</h3>
+        <form onSubmit={editingTaskId ? handleSaveEdit : handleAddTask}>
+          <div className="task-form-grid">
+            <div className="task-form-input">
+              <label htmlFor="title">Task Title *</label>
+              <input
+                type="text"
+                id="title"
+                placeholder="What needs to be done?"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="task-form-input">
+              <label htmlFor="description">Description</label>
+              <textarea
+                id="description"
+                placeholder="Optional details..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="task-form-input">
+              <label htmlFor="priority">Priority</label>
+              <select
+                id="priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+
+            <div className="task-form-input">
+              <label htmlFor="dueDate">Due Date</label>
+              <input
+                type="date"
+                id="dueDate"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+
+            <div className="task-form-input">
+              <label htmlFor="assignedTo">Assigned To</label>
+              <input
+                type="text"
+                id="assignedTo"
+                placeholder="Name or email"
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="task-form-actions">
+            <button type="submit">
+              {editingTaskId ? "Save Changes" : "Add Task"}
             </button>
-            <button onClick={() => handleStartEdit(task)}>Edit</button>
-            <button onClick={() => deleteTask(courseId, task.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+            {editingTaskId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTaskId(null);
+                  setTitle("");
+                  setDescription("");
+                  setPriority("Medium");
+                  setDueDate("");
+                  setAssignedTo("");
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* Filters Section */}
+      <div className="filters-section">
+        <h4>Filter & Sort Tasks</h4>
+        <div className="filters-grid">
+          <div className="filter-group">
+            <label htmlFor="filterStatus">Status</label>
+            <select
+              id="filterStatus"
+              className="filter-select"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="done">Completed</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="filterPriority">Priority</label>
+            <select
+              id="filterPriority"
+              className="filter-select"
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+            >
+              <option value="all">All Priorities</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="filterAssignee">Assigned To</label>
+            <select
+              id="filterAssignee"
+              className="filter-select"
+              value={filterAssignee}
+              onChange={(e) => setFilterAssignee(e.target.value)}
+            >
+              <option value="all">Everyone</option>
+              {uniqueAssignees.map((assignee) => (
+                <option key={assignee} value={assignee}>
+                  {assignee}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="sortBy">Sort By</label>
+            <select
+              id="sortBy"
+              className="filter-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="dueDate">Due Date</option>
+              <option value="createdAt">Created Time</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Tasks List */}
+      <div className="tasks-section">
+        <h4>
+          Tasks ({filteredTasks.length})
+          {filterStatus !== 'all' && ` • ${filterStatus}`}
+          {filterPriority !== 'all' && ` • ${filterPriority}`}
+        </h4>
+
+        {loading ? (
+          <div className="tasks-empty">
+            <p>Loading tasks...</p>
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="tasks-empty">
+            <p>No tasks found</p>
+            <p>Try changing your filters or add a new task</p>
+          </div>
+        ) : (
+          <ul className="tasks-list">
+            {filteredTasks.map((task) => (
+              <li key={task.id} className={task.status === "done" ? "done" : ""}>
+                <div className={`task-priority ${task.priority?.toLowerCase() || 'medium'}`}></div>
+                <div className="task-content">
+                  <div className="task-header">
+                    <div className="task-title-section">
+                      <h3 className="task-title">{task.title}</h3>
+                      <span className={`task-priority-badge ${task.priority?.toLowerCase() || 'medium'}`}>
+                        {task.priority || 'Medium'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {task.description && (
+                    <p className="task-description">{task.description}</p>
+                  )}
+                  
+                  <div className="task-meta">
+                    {task.dueDate?.toDate && (
+                      <div className="task-meta-item task-due">
+                        Due: {task.dueDate.toDate().toLocaleDateString()}
+                      </div>
+                    )}
+                    
+                    {task.assignedTo && (
+                      <div className="task-meta-item task-assignee">
+                        {task.assignedTo}
+                      </div>
+                    )}
+                    
+                    <div className={`task-meta-item task-status ${task.status || 'pending'}`}>
+                      {task.status === 'done' ? 'Completed' : 'Pending'}
+                    </div>
+                  </div>
+                  
+                  <div className="task-actions">
+                    <button
+                      className="task-action-btn"
+                      onClick={() =>
+                        toggleTaskStatus(courseId, task.id, task.status || "pending")
+                      }
+                    >
+                      {task.status === "done" ? "Mark Pending" : "Mark Done"}
+                    </button>
+                    <button 
+                      className="task-action-btn"
+                      onClick={() => handleStartEdit(task)}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      className="task-action-btn"
+                      onClick={() => deleteTask(courseId, task.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

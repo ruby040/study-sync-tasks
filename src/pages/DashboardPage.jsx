@@ -3,19 +3,19 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import "../styles/dashboard.css";
 
 function DashboardPage() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // نجيب كل الكورسات من مجموعة "courses"
     const fetchCourses = async () => {
       try {
         const snapshot = await getDocs(collection(db, "courses"));
         const list = snapshot.docs.map((doc) => ({
-          id: doc.id,        // مثال: "cs335"
-          ...doc.data(),     // مثال: { code: "CS335", name: "Cloud Computing" }
+          id: doc.id,
+          ...doc.data(),
         }));
         setCourses(list);
       } catch (error) {
@@ -29,40 +29,66 @@ function DashboardPage() {
   }, []);
 
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem" }}>
-      <h1>Dashboard</h1>
-      <p>Here you can see your courses and open their shared task lists.</p>
+    <div className="dashboard-container">
+      <div className="welcome-header">
+        <h1>Your Dashboard</h1>
+        <p>Manage your courses and track progress in one place</p>
+      </div>
 
-      {loading && <p>Loading courses...</p>}
+      {/* Stats Section (Optional - uncomment if you want stats) */}
+      {/* <div className="dashboard-stats">
+        <div className="stat-card">
+          <span className="stat-number">{courses.length}</span>
+          <span className="stat-label">Total Courses</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-number">0</span>
+          <span className="stat-label">Active Tasks</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-number">0</span>
+          <span className="stat-label">Completed</span>
+        </div>
+      </div> */}
+
+      {loading && <div className="dashboard-loading">Loading courses...</div>}
 
       {!loading && courses.length === 0 && (
-        <p>No courses found. Ask the Firebase girl (Ruba) to add some in Firestore 😄</p>
+        <div className="dashboard-empty">
+          <p>No courses found. Ask the Firebase girl (Ruba) to add some in Firestore 😄</p>
+        </div>
       )}
 
       {!loading && courses.length > 0 && (
-        <div style={{ marginTop: "1.5rem" }}>
-          <h2>Your courses</h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
+        <div>
+          <h2 style={{ marginBottom: "1rem", color: "#2d3748" }}>Your Courses</h2>
+          <p style={{ color: "#64748b", marginBottom: "2rem" }}>
+            Select a course to view and manage its task list
+          </p>
+          
+          <div className="course-grid">
             {courses.map((course) => (
-              <li
-                key={course.id}
-                style={{
-                  border: "1px solid #ddd",
-                  borderRadius: "6px",
-                  padding: "0.75rem 1rem",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                <div style={{ fontWeight: "bold" }}>
-                  {course.code || course.id} — {course.name || "Unnamed course"}
+              <div key={course.id} className="course-card">
+                <div className="course-header">
+                  <span className="course-code">{course.code || course.id}</span>
+                  <h3 className="course-name">
+                    {course.name || "Unnamed Course"}
+                  </h3>
+                  {course.description && (
+                    <p className="course-description">{course.description}</p>
+                  )}
                 </div>
-
-                <Link to={`/courses/${course.id}`}>
-                  Open task list
+                
+                <div className="course-meta">
+                  Course Tasks
+                </div>
+                
+                <Link to={`/courses/${course.id}`} className="course-link">
+                  Open Task List
                 </Link>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
     </div>
