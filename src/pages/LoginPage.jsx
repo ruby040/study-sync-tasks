@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase/firebaseConfig.js";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import "../styles/auth.css";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
@@ -30,44 +31,40 @@ function LoginPage() {
   };
 
   return (
-    <div>
-      <h1>Login</h1>
+    <div className="auth-container">
+  <h1>Login</h1>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+  {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <form onSubmit={handleLogin}>
-        <div>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+  <form onSubmit={handleLogin}>
+    <input
+      type="email"
+      placeholder="Email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      required
+    />
 
-        <div>
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+    <input
+      type="password"
+      placeholder="Password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+    />
 
-        <button type="submit">Login</button>
-      </form>
+    <button type="submit">Login</button>
+  </form>
 
-      <p>
-        No account? <Link to="/register">Register</Link>
-      </p>
+  <p>
+    No account? <Link to="/register">Register</Link>
+  </p>
 
-      <p>
-  <Link to="/forgot">Forgot Password?</Link>
-</p>
-    
-    </div>
+  <p>
+    <Link to="/forgot">Forgot Password?</Link>
+  </p>
+</div>
+
   );
 }
 
