@@ -6,6 +6,7 @@ import {
   updateProfile,
   sendEmailVerification,
 } from "firebase/auth";
+import "../styles/auth.css";
 
 function RegisterPage() {
   const [name, setName] = useState("");
@@ -40,49 +41,44 @@ function RegisterPage() {
   };
 
   return (
-    <div>
-      <h1>Register</h1>
+    <div className="auth-container">
+  <h1>Create Account</h1>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+  {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <form onSubmit={handleRegister}>
-        <div>
-          <input
-            type="text"
-            placeholder="Display name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
+  <form onSubmit={handleRegister}>
+    <input
+      type="text"
+      placeholder="Display Name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      required
+    />
 
-        <div>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+    <input
+      type="email"
+      placeholder="Email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      required
+    />
 
-        <div>
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+    <input
+      type="password"
+      placeholder="Password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+    />
 
-        <button type="submit">Create account</button>
-      </form>
+    <button type="submit">Create Account</button>
+  </form>
 
-      <p>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
-    </div>
+  <p>
+    Already have an account? <Link to="/login">Login</Link>
+  </p>
+</div>
+
   );
 }
 
